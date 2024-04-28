@@ -38,6 +38,7 @@ def _hacked_clip_forward(self, text):
         return self.tokenizer(t, truncation=False, add_special_tokens=False)["input_ids"]
 
     def transformer_encode(t):
+        #import pdb; pdb.set_trace()
         if self.clip_skip > 1:
             rt = self.transformer(input_ids=t, output_hidden_states=True)
             return self.transformer.text_model.final_layer_norm(rt.hidden_states[-self.clip_skip])

@@ -4,6 +4,8 @@ from pytorch_fid.inception import InceptionV3
 import cv2
 import datetime
 from canny2image_torch import hackathon
+from compute_score import get_score
+
 
 block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[2048]
 model = InceptionV3([block_idx]).to("cuda")
@@ -39,11 +41,17 @@ for i in range(20):
             100,
             200)
     end = datetime.datetime.now().timestamp()
+    t = (end-start)*1000
+
     print("time cost is: ", (end-start)*1000)
-    new_path = "./bird_"+ str(i) + ".jpg"
+    new_path = "torch_imgs/bird_"+ str(i) + ".jpg"
     cv2.imwrite(new_path, new_img[0])
-    # generate the base_img by running the pytorch fp32 pipeline (origin code in canny2image_TRT.py)
-    # base_path = "base_img.jpg"
-    #score = PD(base_path, new_path)
-    #print("score is: ", score)
+    #generate the base_img by running the pytorch fp32 pipeline (origin code in canny2image_TRT.py)
+    base_path = "base_imgs/bird_"+ str(i) + ".jpg"
+
+    pd_score = PD(base_path, new_path)
+
+    score = get_score(t, pd_score)
+
+    print("score is: ", score)
 

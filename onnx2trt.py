@@ -77,10 +77,15 @@ def export_control_net_model():
     onnx_path = "./onnx/ControlNet.onnx"
     plan_path = "./engine/ControlNet.plan"
 
+    # onnx2trt(onnx_path, plan_path,
+    #          get_shapes(1, 1),
+    #          get_shapes(1, 77),
+    #          get_shapes(1, 128))
     onnx2trt(onnx_path, plan_path,
-             get_shapes(1, 1),
              get_shapes(1, 77),
-             get_shapes(1, 128))
+             get_shapes(1, 77),
+             get_shapes(1, 77))
+
 
         # plan_path = plan_path_prefix + str(l) + "_fp16.plan"
         # onnx2trt(onnx_path, plan_path,
@@ -114,9 +119,9 @@ def export_controlled_unet_model():
     plan_path = "./engine/ControlledUnet.plan"
 
     onnx2trt(onnx_path, plan_path,
-             get_shapes(1, 1),
              get_shapes(1, 77),
-             get_shapes(1, 128))
+             get_shapes(1, 77),
+             get_shapes(1, 77))
 
     # onnx2trt(onnx_path, plan_path,
              # get_shapes(1, 1),
@@ -140,10 +145,11 @@ def export_decoder_model():
     print("======================= Decoder  onnx2trt done!")
 
 def main():
-    export_clip_model()
+    #export_clip_model()
     # export_control_net_model()
-    # export_controlled_unet_model()
-    # export_decoder_model()
+
+    export_controlled_unet_model()
+    export_decoder_model()
 
 if __name__ == '__main__':
     main()

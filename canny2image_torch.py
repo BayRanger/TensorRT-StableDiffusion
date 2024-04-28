@@ -41,8 +41,10 @@ class hackathon():
                 seed = random.randint(0, 65535)
             seed_everything(seed)
 
+            #model 1: clip
             if config.save_memory:
                 self.model.low_vram_shift(is_diffusing=False)
+            
 
             cond = {"c_concat": [control], "c_crossattn": [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
             un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn": [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
@@ -50,7 +52,7 @@ class hackathon():
 
             if config.save_memory:
                 self.model.low_vram_shift(is_diffusing=True)
-
+           
             self.model.control_scales = [strength * (0.825 ** float(12 - i)) for i in range(13)] if guess_mode else ([strength] * 13)  # Magic number. IDK why. Perhaps because 0.825**12<0.01 but 0.826**12>0.01
             samples, intermediates = self.ddim_sampler.sample(ddim_steps, num_samples,
                                                         shape, cond, verbose=False, eta=eta,

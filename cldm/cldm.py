@@ -21,6 +21,7 @@ from ldm.models.diffusion.ddim import DDIMSampler
 
 class ControlledUnetModel(UNetModel):
     def forward(self, x, timesteps=None, context=None, control=None, only_mid_control=False, **kwargs):
+        #import pdb; pdb.set_trace() 
         hs = []
         with torch.no_grad():
             t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
@@ -282,9 +283,17 @@ class ControlNet(nn.Module):
         return TimestepEmbedSequential(zero_module(conv_nd(self.dims, channels, channels, 1, padding=0)))
 
     def forward(self, x, hint, timesteps, context, **kwargs):
+        # x: [1, 4, 32, 48] fp32
+        # hint: [1, 3, 256, 384] fp32
+        # timestamps: [1]) int64
+        # context: [1, 77, 768] fp32
+        # import pdb; pdb.set_trace()
+ 
+        # tiemsteps [1], self.model_channels: 320; 
         t_emb = timestep_embedding(timesteps, self.model_channels, repeat_only=False)
+        #t_emb  [1,320] 
         emb = self.time_embed(t_emb)
-
+        # torch.Size([1, 1280])
         guided_hint = self.input_hint_block(hint, emb, context)
 
         outs = []
@@ -301,7 +310,6 @@ class ControlNet(nn.Module):
 
         h = self.middle_block(h, emb, context)
         outs.append(self.middle_block_out(h, emb, context))
-
         return outs
 
 
@@ -328,7 +336,6 @@ class ControlLDM(LatentDiffusion):
     def apply_model(self, x_noisy, t, cond, *args, **kwargs):
         assert isinstance(cond, dict)
         diffusion_model = self.model.diffusion_model
-
         cond_txt = torch.cat(cond['c_crossattn'], 1)
 
         if cond['c_concat'] is None:
@@ -423,6 +430,7 @@ class ControlLDM(LatentDiffusion):
         return opt
 
     def low_vram_shift(self, is_diffusing):
+        import pdb; pdb.set_trace()
         if is_diffusing:
             self.model = self.model.cuda()
             self.control_model = self.control_model.cuda()

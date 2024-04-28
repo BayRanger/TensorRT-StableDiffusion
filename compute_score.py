@@ -62,11 +62,11 @@ for i in range(10):
     end = datetime.datetime.now().timestamp()
     t = (end-start)*1000
     print("time cost is: ", t)
-    new_path = "./bird_"+ str(i) + ".jpg"
+    new_path = "trt_imgs/bird_"+ str(i) + ".jpg"
     cv2.imwrite(new_path, new_img[0])
 
     # generate the base_img by running the pytorch fp32 pipeline (origin code in canny2image_TRT.py)
-    base_path = "base_imgs/" + new_path
+    base_path = "base_imgs/bird_"+ str(i) + ".jpg"
     pd_score = PD(base_path, new_path)
     score = get_score(t, pd_score)
     print("score is: ", score)

@@ -359,8 +359,6 @@ class ControlLDM(LatentDiffusion):
         if cond['c_concat'] is None:
             eps = diffusion_model(x=x_noisy, timesteps=t, context=cond_txt, control=None, only_mid_control=self.only_mid_control)
         else:
-            import pdb
-            #pdb.set_trace()
             if self.controlnet_trt:
                 #pdb.set_trace()
                 hint = torch.cat(cond['c_concat'], 1)
@@ -471,6 +469,7 @@ class ControlLDM(LatentDiffusion):
         return opt
 
     def low_vram_shift(self, is_diffusing):
+        import pdb; pdb.set_trace()
         if is_diffusing:
             self.model = self.model.cuda()
             self.control_model = self.control_model.cuda()
