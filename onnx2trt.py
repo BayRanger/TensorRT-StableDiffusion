@@ -145,9 +145,8 @@ def export_decoder_model():
     print("======================= Decoder  onnx2trt done!")
 
 def main():
-    #export_clip_model()
-    # export_control_net_model()
-
+    export_clip_model()
+    export_control_net_model()
     export_controlled_unet_model()
     export_decoder_model()
 
