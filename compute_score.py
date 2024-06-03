@@ -37,37 +37,43 @@ def get_score(t, p):
 
     return pdFactor * tFactor
 
-scores = []
-latencys = []
-hk = hackathon()
-hk.initialize()
-for i in range(10):
-    path = "./pictures_croped/bird_"+ str(i) + ".jpg"
-    img = cv2.imread(path)
-    start = datetime.datetime.now().timestamp()
-    new_img = hk.process(img,
-            "a bird",
-            "best quality, extremely detailed",
-            "longbody, lowres, bad anatomy, bad hands, missing fingers",
-            1,
-            256,
-            20,
-            False,
-            1,
-            9,
-            2946901,
-            0.0,
-            100,
-            200)
-    end = datetime.datetime.now().timestamp()
-    t = (end-start)*1000
-    print("time cost is: ", t)
-    new_path = "trt_imgs/bird_"+ str(i) + ".jpg"
-    cv2.imwrite(new_path, new_img[0])
 
-    # generate the base_img by running the pytorch fp32 pipeline (origin code in canny2image_TRT.py)
-    base_path = "base_imgs/bird_"+ str(i) + ".jpg"
-    pd_score = PD(base_path, new_path)
-    score = get_score(t, pd_score)
-    print("score is: ", score)
+def main():
+    scores = []
+    latencys = []
+    hk = hackathon()
+    hk.initialize()
+    for i in range(10):
+        path = "./pictures_croped/bird_"+ str(i) + ".jpg"
+        img = cv2.imread(path)
+        start = datetime.datetime.now().timestamp()
+        new_img = hk.process(img,
+                "a bird",
+                "best quality, extremely detailed",
+                "longbody, lowres, bad anatomy, bad hands, missing fingers",
+                1,
+                256,
+                20,
+                False,
+                1,
+                9,
+                2946901,
+                0.0,
+                100,
+                200)
+        end = datetime.datetime.now().timestamp()
+        t = (end-start)*1000
+        print("time cost is: ", t)
+        new_path = "trt_imgs/bird_"+ str(i) + ".jpg"
+        cv2.imwrite(new_path, new_img[0])
 
+        # generate the base_img by running the pytorch fp32 pipeline (origin code in canny2image_TRT.py)
+        base_path = "base_imgs/bird_"+ str(i) + ".jpg"
+        pd_score = PD(base_path, new_path)
+        score = get_score(t, pd_score)
+        print("score is: ", score)
+
+
+
+if __name__ == "__main__":
+    main()
