@@ -127,7 +127,6 @@ class DDIMSampler(object):
             index = total_steps - i - 1
             ts = torch.full((batch_size,), step, device=device, dtype=torch.long)
 
-            # import pdb; pdb.set_trace()
             # conditioning
             if self.controlnet_trt and self.controlunet_trt:
                 hint = torch.cat(conditioning['c_concat'], 1)

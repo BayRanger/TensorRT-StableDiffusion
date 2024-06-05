@@ -36,7 +36,7 @@ class DecoderEngine(object):
         vae_shape_dict = self.vae_engine.decoder_model_shape_dict()
         self.vae_engine.allocate_buffers(vae_shape_dict)
         print("vae engine context load")
-        self.stream = cuda.Stream()
+        #self.stream = cuda.Stream()
         self.vae_engine.get_engine_infor()
 
     def register_buffer(self, name, attr):
@@ -62,21 +62,23 @@ def main():
     #from annotator.canny import CannyDetector
     from cldm_trt.model import create_model, load_state_dict
 
-
-
-    data = torch.randn(1, 4, 32, 48, dtype=torch.float32)
-    model = create_model('models/cldm_v15.yaml').cpu()
+    data = np.load("samples.npy")
+    data = torch.from_numpy(data).to("cuda")
+    # data = torch.randn(1, 4, 32, 48, dtype=torch.float32)
+    model = create_model('models/cldm_v15.yaml').cuda()
     model.load_state_dict(load_state_dict('models/control_sd15_canny.pth', location='cuda'))
     vae_trt = DecoderEngine(model).vae_engine
-    vae_engine_dict = vae_trt.infer({"latent": data})
+    vae_engine_dict = vae_trt.infer({"latent": 1./0.18215 * data})
     result = vae_engine_dict['images']#.cpu().numpy()
 
-    decode_model = model.first_stage_model
-    decode_model.forward = decode_model.decode
+    #decode_model = model.first_stage_model
+    #decode_model.forward = decode_model.decode
+    #import pdb; pdb.set_trace()
+    output_gt = model.decode_first_stage(data).cpu().numpy()
+    output = result.detach().cpu().numpy()
 
-    output = decode_model(data)
-
-    ret = np.allclose(output.numpy(), result.detach().cpu().numpy(), rtol=1e-03, atol=1e-05, equal_nan=False)
+    ret = np.allclose(output_gt, output, rtol=1e-03, atol=1e-05, equal_nan=False)
+    import pdb; pdb.set_trace()
     if (ret):
         print("======decoder test passed======")
     else:

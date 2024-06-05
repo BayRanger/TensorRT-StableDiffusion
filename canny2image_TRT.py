@@ -13,7 +13,8 @@ from annotator.util import resize_image, HWC3
 from annotator.canny import CannyDetector
 from cldm_trt.model import create_model, load_state_dict
 from cldm_trt.ddim_hacked import DDIMSampler
-
+from cldm_trt.clip_engine import ClipEngine
+from vae_engine import DecoderEngine
 
 class hackathon():
 
@@ -27,9 +28,11 @@ class hackathon():
             self.model.load_state_dict(load_state_dict('./models/control_sd15_canny.pth', location='cuda'))
             self.model = self.model.cuda()
 
-
+        self.clip_engine = ClipEngine(self.model)  #TODO: add
+        self.clip_trt = self.clip_engine.clip_engine
         self.ddim_sampler = DDIMSampler(self.model)
         self.warm_up()
+
     def warm_up(self):
         for i in range(2):
             path = "./pictures_croped/bird_"+ str(i) + ".jpg"
@@ -68,9 +71,42 @@ class hackathon():
                 self.model.low_vram_shift(is_diffusing=False)
 
             # import pdb; pdb.set_trace()
+            #TOOD: check clip
+            cond_crossattn_trt = self.model.get_learned_token([prompt + ', ' + a_prompt] * num_samples)
+            un_cond_crossattn_trt = self.model.get_learned_token([n_prompt] * num_samples)
+
             cond = {"c_concat": [control], "c_crossattn": [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
             un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn": [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
             shape = (4, H // 8, W // 8)
+
+            cond_tokens = self.model.get_learned_token([prompt + ', ' + a_prompt] * num_samples)
+            un_cond_tokens = self.model.get_learned_token([n_prompt] * num_samples)
+
+            # cond_tokens =  torch.tensor(cond_tokens)
+            # un_cond_tokens = torch.tensor(un_cond_tokens)
+            #tokens are the input of clip!
+
+            cond_clip_trt_crosssattn = self.clip_trt.infer({"input_ids": cond_tokens})["last_hidden_state"]
+            uncond_clip_trt_crosssattn = self.clip_trt.infer({"input_ids": un_cond_tokens})["last_hidden_state"]
+
+            use_torch = False
+
+            #TODO: debug
+            if (use_torch):
+                cond = {"c_concat": [control], "c_crossattn": \
+                        [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
+                un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn": \
+                        [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
+            else:
+                cond = {"c_concat": [control], "c_crossattn":[cond_clip_trt_crosssattn]}
+                un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn":[uncond_clip_trt_crosssattn]}
+                            #here, we get clip inference result
+
+            print(f"cond shape  {cond['c_crossattn'][0].shape}")
+            print(f"un_cond shape  {un_cond['c_crossattn'][0].shape}")
+
+
+
 
             if config.save_memory:
                 self.model.low_vram_shift(is_diffusing=True)
@@ -85,7 +121,18 @@ class hackathon():
             if config.save_memory:
                 self.model.low_vram_shift(is_diffusing=False)
             # import pdb; pdb.set_trace()
-            x_samples = self.model.decode_first_stage(samples)
+            use_torch = True
+            #if use_torch
+            np.save("samples.npy", samples.cpu().numpy())
+            scale = 1./0.18215
+            '''
+            x_samples_gt = self.model.decode_first_stage( samples)
+            '''
+
+            vae_trt = DecoderEngine(self.model).vae_engine
+            vae_engine_dict = vae_trt.infer({"latent": scale *samples})
+            x_samples = vae_engine_dict['images']#.cpu().numpy()
+
             x_samples = (einops.rearrange(x_samples, 'b c h w -> b h w c') * 127.5 + 127.5).cpu().numpy().clip(0, 255).astype(np.uint8)
 
             results = [x_samples[i] for i in range(num_samples)]

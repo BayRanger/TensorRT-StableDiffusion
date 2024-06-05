@@ -120,8 +120,8 @@ class Engine():
         input_infor = dict((self.engine.get_tensor_name(i), self.context.get_binding_shape(i))  for i in range(nInput))
         ouput_infor = dict((self.engine.get_tensor_name(nInput + i), self.context.get_binding_shape(nInput + i))  for i in range(nOutput))
         print("TensorRT engine infors -----------------")
-        print("engin nInput: ", nInput, ", Input shape: ", input_infor)
-        print("engin nOutput: ", nOutput, ", Outpu shape: ", ouput_infor)
+        print("engine Input: ", nInput, ", Input shape: ", input_infor)
+        print("engine Output: ", nOutput, ", Output shape: ", ouput_infor)
 
     def infer(self, feed_dict, stream=None, use_cuda_graph=False):
         # import pdb; pdb.set_trace()
@@ -154,5 +154,3 @@ class Engine():
                 raise ValueError(f"ERROR: inference failed.")
 
         return self.tensors
-
-
