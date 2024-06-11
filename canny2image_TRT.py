@@ -13,23 +13,21 @@ from annotator.util import resize_image, HWC3
 from annotator.canny import CannyDetector
 from cldm_trt.model import create_model, load_state_dict
 from cldm_trt.ddim_hacked import DDIMSampler
-from cldm_trt.clip_engine import ClipEngine
+from clip_engine import ClipEngine
 from vae_engine import DecoderEngine
 
 class hackathon():
 
     def initialize(self):
         self.apply_canny = CannyDetector()
-        self.model = create_model('./models/cldm_v15.yaml').cpu()
-        self.model.cond_stage_model.cuda()
+        self.model = create_model('./models/cldm_v15.yaml').cuda()
+        self.model.cond_stage_model
         self.use_trt = True
         # if not self.use_trt:
-        if 1:
-            self.model.load_state_dict(load_state_dict('./models/control_sd15_canny.pth', location='cuda'))
-            self.model = self.model.cuda()
+        self.model.load_state_dict(load_state_dict('./models/control_sd15_canny.pth', location='cuda'))
+        self.model = self.model.cuda()
 
-        self.clip_engine = ClipEngine(self.model)  #TODO: add
-        self.clip_trt = self.clip_engine.clip_engine
+        self.clip_trt = ClipEngine(self.model).clip_engine
         self.ddim_sampler = DDIMSampler(self.model)
         self.warm_up()
 
@@ -70,42 +68,47 @@ class hackathon():
             if config.save_memory:
                 self.model.low_vram_shift(is_diffusing=False)
 
-            # import pdb; pdb.set_trace()
-            #TOOD: check clip
-            cond_crossattn_trt = self.model.get_learned_token([prompt + ', ' + a_prompt] * num_samples)
-            un_cond_crossattn_trt = self.model.get_learned_token([n_prompt] * num_samples)
-
-            cond = {"c_concat": [control], "c_crossattn": [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
-            un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn": [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
-            shape = (4, H // 8, W // 8)
-
             cond_tokens = self.model.get_learned_token([prompt + ', ' + a_prompt] * num_samples)
             un_cond_tokens = self.model.get_learned_token([n_prompt] * num_samples)
+            #tokens are the input of clip
+            #cond_tokens = cond_tokens.to(torch.int32)
+            cond_clip_trt = self.clip_trt.infer({"input_ids": cond_tokens})
+            cond_clip_trt_crosssattn = cond_clip_trt["last_hidden_state"]
 
-            # cond_tokens =  torch.tensor(cond_tokens)
-            # un_cond_tokens = torch.tensor(un_cond_tokens)
-            #tokens are the input of clip!
 
-            cond_clip_trt_crosssattn = self.clip_trt.infer({"input_ids": cond_tokens})["last_hidden_state"]
-            uncond_clip_trt_crosssattn = self.clip_trt.infer({"input_ids": un_cond_tokens})["last_hidden_state"]
+            hint_str = ["a bird, best quality, extremely detailed"]
+            tokens = self.model.get_learned_token(hint_str)
+            clip_engine_dict =self.clip_trt.infer({"input_ids": tokens})
 
-            use_torch = False
 
-            #TODO: debug
+            uncond_clip_trt = self.clip_trt.infer({"input_ids": un_cond_tokens})
+            uncond_clip_trt_crosssattn = uncond_clip_trt["last_hidden_state"]
+
+
+            shape = (4, H // 8, W // 8)
+            use_torch  = True
             if (use_torch):
-                cond = {"c_concat": [control], "c_crossattn": \
-                        [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
-                un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn": \
-                        [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
+                cond = {"c_concat": [control], \
+                        "c_crossattn": [self.model.get_learned_conditioning([prompt + ', ' + a_prompt] * num_samples)]}
+                un_cond = {"c_concat": None if guess_mode else [control], \
+                        "c_crossattn": [self.model.get_learned_conditioning([n_prompt] * num_samples)]}
+
             else:
-                cond = {"c_concat": [control], "c_crossattn":[cond_clip_trt_crosssattn]}
-                un_cond = {"c_concat": None if guess_mode else [control], "c_crossattn":[uncond_clip_trt_crosssattn]}
-                            #here, we get clip inference result
+                cond = {"c_concat": [control], \
+                        "c_crossattn": [cond_clip_trt_crosssattn]}
+                un_cond = {"c_concat": None if guess_mode else [control], \
+                        "c_crossattn": [uncond_clip_trt_crosssattn]}
 
             print(f"cond shape  {cond['c_crossattn'][0].shape}")
             print(f"un_cond shape  {un_cond['c_crossattn'][0].shape}")
 
 
+            # diff = cond["c_crossattn"][0]- clip_engine_dict['last_hidden_state']
+            # diff_un = un_cond["c_crossattn"][0] - uncond_clip_trt_crosssattn
+            # np.set_printoptions(formatter={'float': '{:0.3f}'.format})
+
+            # print(f"diff: {diff.cpu().numpy()}")
+            # print(f"diff_un: {diff_un.cpu().numpy()}")
 
 
             if config.save_memory:

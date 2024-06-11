@@ -67,10 +67,12 @@ def main():
     cldm_model = create_model('models/cldm_v15.yaml').cuda()
     cldm_model.load_state_dict(load_state_dict('models/control_sd15_canny.pth', location='cuda'))
     clip_trt = ClipEngine(cldm_model).clip_engine
-    tokens = cldm_model.get_learned_token(['hello , stable diffusion'])
+    hint_str = ["a bird, best quality, extremely detailed"]
+    tokens = cldm_model.get_learned_token(hint_str)
+    import pdb; pdb.set_trace()
     clip_engine_dict = clip_trt.infer({"input_ids": tokens})
     result = clip_engine_dict['last_hidden_state'].cpu().numpy()
-    gt = cldm_model.get_learned_conditioning(['hello , stable diffusion']).cpu().numpy()
+    gt = cldm_model.get_learned_conditioning(hint_str).cpu().numpy()
     ret = np.allclose(result, gt, rtol=1e-03, atol=1e-05, equal_nan=False)
     if (ret):
         print("========clip accuracy test passed ==========")
